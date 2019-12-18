@@ -17,22 +17,26 @@ cube[2][0][0] = int(3)
 cube[1][0][0] = int(4)
 cube[0][0][0] = int(5)
 
-max_block = 5
-last_direction = [-1,0,0]
+max_block = get_max_block(cube)
+last_direction = get_last_direction(cube)
 
 # Initialize block metadata
 columns = ["Block", "Elbow", "location", "directions"]
 block_data = pd.DataFrame(columns = columns)
-block = 1
+
 for block in np.unique(cube)[np.unique(cube) != 0]:
     block_number = block
     block_location = get_block_location(cube, block_number)
-    elbow = snake[snake.Block == block_number]["Elbow"]
+    elbow = (int(snake[snake.Block == max_block]['Elbow']) == 1)
     if block_number < max_block:
         direction = get_direction(cube, block_number, (block_number + 1))
     else:
-        direction =
-    block_data.append([block_number, elbow, block_location, direction])
+        elbow = (int(snake[snake.Block == max_block]['Elbow']) == 1)
+        direction = get_possible_directions(cube, block_number, elbow)
+    block_data = block_data.append(pd.DataFrame({"Block":block_number,
+                                    "Elbow":elbow, 
+                                    "location":[block_location],
+                                    "directions":[direction]}))
     
 # blocks_to_go = np.setdiff1d(snake["Block"], np.unique(cube))
 blocks_to_go = snake[max_block:]
@@ -57,7 +61,7 @@ def get_max_block(cube):
     return(max(np.unique(cube)))
 
 def get_block_location(cube, block_number):
-    return(np.array(np.where(cube == block_number)))
+    return(np.array(np.where(cube == block_number)).flatten())
 
 def get_direction(cube, block1, block2):
     location1 = get_block_location(cube, block1)
@@ -71,17 +75,12 @@ def get_last_direction(cube):
     second_location = get_block_location(cube, second)
     return(max_location - second_location)
 
-np.where(direction != 0)[0]
-block = 5
-elbow = 1
-possible_directions[possible_directions == np.array([1, 0, 0])]
-possible_directions[1:]
 def get_possible_directions(cube, block, elbow):
     location = get_block_location(cube, block)
     last_direction = get_direction(cube, (block - 1), block)
-    if elbow == 1:
-        last_axis = np.where(direction != 0)[0]
-        other_axes = np.where(direction == 0)[0]
+    if elbow:
+        last_axis = np.where(last_direction != 0)[0]
+        other_axes = np.where(last_direction == 0)[0]
         # Create new possible directions based on the last axis of rotation
         # Initiate empty array
         possible_directions = np.zeros((4,3))
@@ -92,9 +91,21 @@ def get_possible_directions(cube, block, elbow):
                 possible_directions[dummy][last_axis] = 0
                 possible_directions[dummy][axis] = (-1)**x
                 dummy = dummy + 1
-        for direction in possible_directions:
-            new_position = np.array(location) + np.array(direction)
+        
+        remove_idx = []
+        for d in range(len(possible_directions)):
+            new_position = location.flatten() + np.array(possible_directions[d], dtype = 'int64')
             if any(x < 0 for x in new_position) or any(x > 3 for x in new_position):
+                remove_idx.append(d)
+                continue
+            elif cube[new_position[0]][new_position[1]][new_position[2]] != 0:
+                remove_idx.append(d)
+                continue
+        
+        # Keep only possible directions
+        keep_idx = [i not in remove_idx for i in [0,1,2,3]]
+        possible_directions = possible_directions[keep_idx]    
                 
     else:
-        possible_directions = get(last_direction(cube))
+        possible_directions = get_last_direction(cube)
+    return(possible_directions)
