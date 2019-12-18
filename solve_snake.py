@@ -4,43 +4,13 @@ import os
 import sys
 
 # Change path to script location
-os.chdir(os.path.realpath(sys.argv[0]))
+# os.chdir(os.path.realpath(sys.argv[0])) # This used to work but not anymore
+os.chdir("C:\\Users\\goero\\OneDrive\\Documenten\\Snake-Solver\\")
 
 # Load definition of snake
 snake = pd.read_csv("define_snake.txt", sep = "\t", header = 0)
 
-# Initialize cube with known positions
-cube = np.zeros((4,4,4))
-cube[3][1][0] = int(1)
-cube[3][0][0] = int(2)
-cube[2][0][0] = int(3)
-cube[1][0][0] = int(4)
-cube[0][0][0] = int(5)
-
-max_block = get_max_block(cube)
-last_direction = get_last_direction(cube)
-
-# Initialize block metadata
-columns = ["Block", "Elbow", "location", "directions"]
-block_data = pd.DataFrame(columns = columns)
-
-for block in np.unique(cube)[np.unique(cube) != 0]:
-    block_number = block
-    block_location = get_block_location(cube, block_number)
-    elbow = (int(snake[snake.Block == max_block]['Elbow']) == 1)
-    if block_number < max_block:
-        direction = get_direction(cube, block_number, (block_number + 1))
-    else:
-        elbow = (int(snake[snake.Block == max_block]['Elbow']) == 1)
-        direction = get_possible_directions(cube, block_number, elbow)
-    block_data = block_data.append(pd.DataFrame({"Block":block_number,
-                                    "Elbow":elbow, 
-                                    "location":[block_location],
-                                    "directions":[direction]}))
-    
-# blocks_to_go = np.setdiff1d(snake["Block"], np.unique(cube))
-blocks_to_go = snake[max_block:]
-
+# Define necessary functions
 def add_block(cube, block, from_location, direction):
     new_position = np.array(from_location) + np.array(direction)
     # Check if the new position is within the bounds of the cube
@@ -58,7 +28,7 @@ def get_block_number(cube, position):
     return cube[position[0]][position[1]][position[2]]
 
 def get_max_block(cube):
-    return(max(np.unique(cube)))
+    return(int(max(np.unique(cube))))
 
 def get_block_location(cube, block_number):
     return(np.array(np.where(cube == block_number)).flatten())
@@ -109,3 +79,37 @@ def get_possible_directions(cube, block, elbow):
     else:
         possible_directions = get_last_direction(cube)
     return(possible_directions)
+
+# Initialize cube with known positions
+cube = np.zeros((4,4,4))
+cube[3][1][0] = int(1)
+cube[3][0][0] = int(2)
+cube[2][0][0] = int(3)
+cube[1][0][0] = int(4)
+cube[0][0][0] = int(5)
+
+max_block = get_max_block(cube)
+last_direction = get_last_direction(cube)
+
+# Initialize block metadata
+columns = ["Block", "Elbow", "location", "directions"]
+block_data = pd.DataFrame(columns = columns)
+
+for block in np.unique(cube)[np.unique(cube) != 0]:
+    block_number = block
+    block_location = get_block_location(cube, block_number)
+    elbow = (int(snake[snake.Block == max_block]['Elbow']) == 1)
+    if block_number < max_block:
+        direction = get_direction(cube, block_number, (block_number + 1))
+    else:
+        # Set the elbow variable as boolean, rather than 0/1
+        elbow = (int(snake[snake.Block == max_block]['Elbow']) == 1)
+        direction = get_possible_directions(cube, block_number, elbow)
+    block_data = block_data.append(pd.DataFrame({"Block":block_number,
+                                    "Elbow":elbow, 
+                                    "location":[block_location],
+                                    "directions":[direction]}))
+    
+# blocks_to_go = np.setdiff1d(snake["Block"], np.unique(cube))
+blocks_to_go = snake[max_block:]
+
