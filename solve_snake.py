@@ -26,7 +26,7 @@ cube = init_cube[1]
 
 block_data_dummy = copy.deepcopy(block_data)
 cube_dummy = copy.deepcopy(cube)
-max_block = sf.get_max_block(cube)
+max_block = sf.get_max_block(cube_dummy)
 deepest_penetration = int(64)
 highest_penetration = int(0)
 print('Starting at '+str(datetime.now()))
@@ -39,6 +39,13 @@ while len(block_data_dummy[block_data_dummy.block == max_block]["directions"][0]
         cube_dummy = next_step[1]
         max_block = next_step[2]
     
+    block_data_dummy = sf.get_lengths(block_data_dummy)
+    if max(block_data_dummy.len) == 1 and max_block < 64:
+        print("Couldn't find a solution, your starting positions must have been wrong.")
+        # return(block_data_dummy)
+        break
+    else:
+        block_data_dummy = block_data_dummy.drop(['len'], axis = 1)
     # When the inner loop fails, we need to reset the path we took and remove the last direction we took
     # on that path.
     reset = sf.reset_path(cube_dummy, block_data_dummy)
@@ -48,7 +55,7 @@ while len(block_data_dummy[block_data_dummy.block == max_block]["directions"][0]
     # When a the last direction is removed, the length of the possible directions will again be 0.
     # In this case, we want to reset to the last fork that existed, which is the last block where
     # more than one direction existed.
-    if len(block_data_dummy[block_data_dummy.block == max_block]["directions"][0]) == 0 and not max_block == 64:
+    if len(block_data_dummy[block_data_dummy.block == max_block]["directions"][0]) == 0 and max_block < 64:
         reset = sf.reset_to_latest_fork(cube_dummy, block_data_dummy)
         block_data_dummy = reset[0]
         cube_dummy = reset[1]
@@ -79,7 +86,7 @@ for max_block in range(5,15):
     max_block = next_step[2]    
 block = get_max_block(cube_dummy)
 direction_dummy = np.array(block_data_dummy[block_data_dummy.Block == block]["directions"][0][0], dtype = "int64")
-cube_dummy = add_block(cube_dummy, block + 1, get_block_location(cube_dummy, block), direction_dummy)
+cube_dummy = add_block(cube_0dummy, block + 1, get_block_location(cube_dummy, block), direction_dummy)
 location_dummy = get_block_location(cube_dummy, block + 1)
 elbow = (int(snake[snake.Block == (block + 1)]['Elbow']) == 1)
 next_directions = get_possible_directions(cube_dummy, int(block + 1), elbow)
