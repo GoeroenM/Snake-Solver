@@ -56,17 +56,19 @@ def initialize_cube(init_cube, snake, cube_size = 4):
 def update_cube_from_data(cube, block_data, verbose = False):
     max_block_cube = get_max_block(cube)
     max_block_data = int(max(block_data.block))
-    if max_block_cube == max_block_data and verbose:
-        print("Cube and data are of equal size, I have nothing to do.")
+    if max_block_cube == max_block_data:
+        if verbose:
+            print("Cube and data are of equal size, I have nothing to do.")
         return(cube)
-    elif max_block_cube > max_block_data and verbose:
-        print("Your cube is bigger than your data, something went wrong.")
+    elif max_block_cube > max_block_data:
+        if verbose:
+            print("Your cube is bigger than your data, something went wrong.")
         return(cube)
     else:
         cube_dummy = copy.deepcopy(cube)
         for b in range(max_block_cube, max_block_data):
-            direction = block_data[block_data.block == b]['direction'][0]
-            cube_dummy = add_block(cube, b, direction)
+            direction = block_data[block_data.block == b]['directions'][0][0]
+            cube_dummy = add_block(cube, b + 1, direction)
         return(cube_dummy)
 
 # Some practical functions
@@ -228,5 +230,44 @@ def reset_to_latest_fork(cube, block_data):
     max_block = get_max_block(cube)
     return(block_data, cube, max_block, lowest_fork)
 
-
+# Function that creates a queu of objects to run parallel process on.
+# Create the queue starting with the lowest fork and then moving upwards until
+# we've reached the number of CPU cores.
+# =============================================================================
+# This function was depricated for a more robust function that could create
+# a queue on any number of cores. This function couldn't handle anything higher
+# than the sum of permutations above the second level.
+# def create_queue(cube, block_data, n_cores):
+#     block_data = sf.get_lengths(block_data)
+#     lowest_fork = int(min(block_data[block_data['len'] > 1].block))
+#     fork_size = block_data[block_data.block == lowest_fork].len[0]
+#     block_data = block_data.drop(['len'], axis = 1)
+#     # Create subset that contains all lowest non-forked rows
+#     # block_data_sub = block_data[0:(lowest_fork - 1)]
+#     sub_queue = []
+#     for s in range(fork_size):
+#         block_data_queue = split_fork(block_data, lowest_fork, s)
+#         sub_queue.append(block_data_queue)
+#     
+#     queue = []
+#     for q in range(len(sub_queue)):
+#         sub_queue[q] = sf.continue_path(cube, sub_queue[q])[0]
+#         sub_queue[q] = sf.get_lengths(sub_queue[q])
+#         max_block = int(max(sub_queue[q].block[0]))        
+#         new_direction = sub_queue[q][sub_queue[q].block == max_block - 1].directions[0][0]
+#         cube_dummy = copy.deepcopy(cube)
+#         cube_dummy = sf.add_block(cube_dummy, block = max_block, \
+#                                 direction = new_direction)
+#         lowest_fork = int(min(sub_queue[q][sub_queue[q]['len'] > 1].block))
+#         fork_size = sub_queue[q][sub_queue[q].block == lowest_fork].len[0]
+#         sub_queue[q] = sub_queue[q].drop(['len'], axis = 1)
+#         for s in range(fork_size):
+#             block_data_queue = split_fork(sub_queue[q], lowest_fork, s)
+#             queue.append(block_data_queue)
+#     
+#     if len(queue) > n_cores:
+#         queue = queue[0:n_cores]
+#     
+#     return(queue)
+# =============================================================================
     
