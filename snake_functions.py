@@ -53,6 +53,21 @@ def initialize_cube(init_cube, snake, cube_size = 4):
     
     return(block_data, cube)
 
+def update_cube_from_data(cube, block_data, verbose = False):
+    max_block_cube = get_max_block(cube)
+    max_block_data = int(max(block_data.block))
+    if max_block_cube == max_block_data and verbose:
+        print("Cube and data are of equal size, I have nothing to do.")
+        return(cube)
+    elif max_block_cube > max_block_data and verbose:
+        print("Your cube is bigger than your data, something went wrong.")
+        return(cube)
+    else:
+        cube_dummy = copy.deepcopy(cube)
+        for b in range(max_block_cube, max_block_data):
+            direction = block_data[block_data.block == b]['direction'][0]
+            cube_dummy = add_block(cube, b, direction)
+        return(cube_dummy)
 
 # Some practical functions
 def add_block(cube, block, direction):
