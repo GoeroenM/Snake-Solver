@@ -3,6 +3,7 @@ import pandas as pd
 import os
 import sys
 import copy
+import snake_functions as sf
 
 # Change path to script location
 # os.chdir(os.path.realpath(sys.argv[0])) # This used to work but not anymore
@@ -11,166 +12,63 @@ os.chdir("C:\\Users\\goero\\OneDrive\\Documenten\\Snake-Solver\\")
 # Load definition of snake
 snake = pd.read_csv("define_snake.txt", sep = "\t", header = 0)
 
-# Define necessary functions
-def add_block(cube, block, from_location, direction):
-    new_position = np.array(from_location) + np.array(direction)
-    # Check if the new position is within the bounds of the cube
-    if any(x < 0 for x in new_position) or any(x > 3 for x in new_position):
-        raise ValueError("Block out of bounds.")
-    # Check if the new position is already taken
-    elif cube[new_position[0]][new_position[1]][new_position[2]] != 0:
-        raise ValueError("Position already taken.")
-    else:
-        cube[new_position[0]][new_position[1]][new_position[2]] = block
-    return(cube)
+# Read in the cube initialisation
+init_cube = pd.read_csv("initiate_cube.txt", sep = "\t", header = 0)
+# Reform the location part to transform it from a string [x y z] to an array
+# that is usable in the code
+init_cube['location'] = init_cube.location.str[1:6].replace(' ', '')
+init_cube['location'] = init_cube.location.apply(lambda x: np.array(list(map(int, x.split(' ')))))
 
-def get_block_number(cube, position):
-    position = np.array(position)
-    return cube[position[0]][position[1]][position[2]]
-
-def get_max_block(cube):
-    return(int(max(np.unique(cube))))
-
-def get_block_location(cube, block_number):
-    return(np.array(np.where(cube == block_number)).flatten())
-
-def remove_block(cube, block):
-    location = get_block_location(cube, block)
-    cube[location[0]][location[1]][location[2]] = 0
-    return(cube)
-
-def get_direction(cube, block1, block2):
-    location1 = get_block_location(cube, block1)
-    location2 = get_block_location(cube, block2)
-    return(location2 - location1)
-
-def get_last_direction(cube):
-    max_ = get_max_block(cube)
-    second = max_ - 1
-    max_location = get_block_location(cube, max_)
-    second_location = get_block_location(cube, second)
-    return(max_location - second_location)
-
-def get_possible_directions(cube, block, elbow):
-    location = get_block_location(cube, block)
-    last_direction = get_direction(cube, (block - 1), block)
-    if elbow:
-        last_axis = np.where(last_direction != 0)[0]
-        other_axes = np.where(last_direction == 0)[0]
-        # Create new possible directions based on the last axis of rotation
-        # Initiate empty array
-        possible_directions = np.zeros((4,3))
-        dummy = 0
-        # For both axes, need to create 2 directions, the previous axis is 0
-        for axis in other_axes:
-            for x in range(2):
-                possible_directions[dummy][last_axis] = 0
-                possible_directions[dummy][axis] = (-1)**x
-                dummy = dummy + 1
-        
-        # If a direction is out of bounds or the position is already taken,
-        # we'll remove those possible directions.
-        remove_idx = []
-        for d in range(len(possible_directions)):
-            new_position = location.flatten() + np.array(possible_directions[d], dtype = 'int64')
-            if any(x < 0 for x in new_position) or any(x > 3 for x in new_position):
-                remove_idx.append(d)
-                continue
-            elif cube[new_position[0]][new_position[1]][new_position[2]] != 0:
-                remove_idx.append(d)
-                continue
-        
-        # Keep only possible directions
-        keep_idx = [i not in remove_idx for i in [0,1,2,3]]
-        possible_directions = possible_directions[keep_idx]    
-                
-    else:
-        #The reason I predefine possible directions here and sum rather than
-        #just taking get_last_direction is to ensure that in both the if and
-        #the else, possible_directions is returned in the same format.
-        possible_directions = np.zeros((1,3))
-        possible_directions = possible_directions + get_last_direction(cube)
-    return(possible_directions)
-
-def continue_path(cube, block_data, block):
-    block_data_dummy = copy.deepcopy(block_data)
-    cube_dummy = copy.deepcopy(cube)
-    block = get_max_block(cube_dummy)
-    direction_dummy = np.array(block_data_dummy[block_data_dummy.block == block]["directions"][0][0], dtype = "int64")
-    try:
-        cube_dummy = add_block(cube_dummy, block + 1, get_block_location(cube_dummy, block), direction_dummy)
-        location_dummy = get_block_location(cube_dummy, block + 1)
-        elbow = (int(snake[snake.block == (block + 1)]['elbow']) == 1)
-        next_directions = get_possible_directions(cube_dummy, int(block + 1), elbow)
-        block_data_dummy = block_data_dummy.append(pd.DataFrame({"block":int(block + 1),
-                                                         "elbow":elbow,
-                                                         "location":[location_dummy],
-                                                         "directions":[next_directions]}))
-        max_block = get_max_block(cube_dummy)
-    except ValueError:
-        # A ValueError is only going to happen when you're trying to continue
-        # on from one elbow to the next. So in this case, we'll have to go back
-        # to the last elbow instead of just remove the last block and try a new
-        # direction.
-        last_elbow = int(max(block_data_dummy[block_data_dummy.elbow]["block"]))
-        for b in range(block, last_elbow):
-            cube_dummy = remove_block(cube_dummy, b)
-        
-        # Remove last direction and update block_data_dummy
-        old_data = block_data_dummy[block_data_dummy.block == last_elbow]
-        replacement_data = pd.DataFrame({'block':old_data.block,
-                                         'elbow':old_data.elbow,
-                                         'location':old_data.location,
-                                         'directions':[old_data.directions[0][1:]]})
-        block_data_dummy = block_data_dummy[0:(last_elbow - 1)]
-        block_data_dummy = block_data_dummy.append(replacement_data)
-        max_block = get_max_block(cube_dummy)
-    return(block_data_dummy, cube_dummy, max_block)
-
-# Initialize cube with known positions
-cube = np.zeros((4,4,4))
-cube[3][1][0] = int(1)
-cube[3][0][0] = int(2)
-cube[2][0][0] = int(3)
-cube[1][0][0] = int(4)
-cube[0][0][0] = int(5)
-
-max_block = get_max_block(cube)
-last_direction = get_last_direction(cube)
-
-# Initialize block metadata
-columns = ["block", "elbow", "location", "directions"]
-block_data = pd.DataFrame(columns = columns)
-
-for block in np.unique(cube)[np.unique(cube) != 0]:
-    block_number = block
-    block_location = get_block_location(cube, block_number)
-    elbow = (int(snake[snake.block == max_block]['elbow']) == 1)
-    if block_number < max_block:
-        direction = get_direction(cube, block_number, (block_number + 1))
-    else:
-        # Set the elbow variable as boolean, rather than 0/1
-        elbow = (int(snake[snake.block == max_block]['elbow']) == 1)
-        direction = get_possible_directions(cube, block_number, elbow)
-    block_data = block_data.append(pd.DataFrame({"block":block_number,
-                                    "elbow":elbow, 
-                                    "location":[block_location],
-                                    "directions":[direction]}))
-    
-# blocks_to_go = np.setdiff1d(snake["Block"], np.unique(cube))
-blocks_to_go = snake[max_block:]
-len(block_data_dummy[block_data_dummy.block == 14]["directions"][0])
+init_cube = sf.initialize_cube(init_cube, snake)
+block_data = init_cube[0]
+cube = init_cube[1]
 
 block_data_dummy = copy.deepcopy(block_data)
 cube_dummy = copy.deepcopy(cube)
-max_block = get_max_block(cube)
-while len(block_data_dummy[block_data_dummy.block == max_block]["directions"][0]) > 0:
+max_block = sf.get_max_block(cube)
+deepest_penetration = int(64)
+highest_penetration = int(0)
+while len(block_data_dummy[block_data_dummy.block == max_block]["directions"][0]) > 0 and max_block < 64:
+    # This loop will follow any path until it no longer finds any possible directions. When this happens, 
+    # the first condition will no longer be valid, as the length of the possible directions will be 0.
+    while len(block_data_dummy[block_data_dummy.block == max_block]["directions"][0]) > 0 and max_block < 64:
+        next_step = sf.continue_path(cube_dummy, block_data_dummy)
+        block_data_dummy = next_step[0]
+        cube_dummy = next_step[1]
+        max_block = next_step[2]
+    
+    # When the inner loop fails, we need to reset the path we took and remove the last direction we took
+    # on that path.
+    reset = sf.reset_path(cube_dummy, block_data_dummy)
+    block_data_dummy = reset[0]
+    cube_dummy = reset[1]
+    max_block = reset[2]
+    # When a the last direction is removed, the length of the possible directions will again be 0.
+    # In this case, we want to reset to the last fork that existed, which is the last block where
+    # more than one direction existed.
+    if len(block_data_dummy[block_data_dummy.block == max_block]["directions"][0]) == 0 and not max_block == 64:
+        reset = sf.reset_to_latest_fork(cube_dummy, block_data_dummy)
+        block_data_dummy = reset[0]
+        cube_dummy = reset[1]
+        max_block = reset[2]
+        if max_block < deepest_penetration:
+            deepest_penetration = max_block
+            print("Resetting to fork. Lowest fork "+str(reset[3])+". Deepest penetration "+str(deepest_penetration))
+        #if max_block == deepest_penetration:
+         #   print("Deepest penetration reached, building back up.")
+          #  highest_penetration = deepest_penetration
+        #if reset[3] == highest_penetration:
+         #   highest_penetration += 1
+          #  print("Went up a level. Highest penetration "+str(highest_penetration))
+    elif max_block == 64:
+        print("I reached the end.")
+        break
+
+for max_block in range(5,15):
     next_step = continue_path(cube_dummy, block_data_dummy, max_block)
     block_data_dummy = next_step[0]
     cube_dummy = next_step[1]
-    max_block = next_step[2]
-    
-     
+    max_block = next_step[2]    
 block = get_max_block(cube_dummy)
 direction_dummy = np.array(block_data_dummy[block_data_dummy.Block == block]["directions"][0][0], dtype = "int64")
 cube_dummy = add_block(cube_dummy, block + 1, get_block_location(cube_dummy, block), direction_dummy)
