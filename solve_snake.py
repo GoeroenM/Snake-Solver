@@ -3,6 +3,7 @@ import pandas as pd
 import os
 import sys
 import copy
+from datetime import datetime
 import snake_functions as sf
 
 # Change path to script location
@@ -28,6 +29,7 @@ cube_dummy = copy.deepcopy(cube)
 max_block = sf.get_max_block(cube)
 deepest_penetration = int(64)
 highest_penetration = int(0)
+print('Starting at '+str(datetime.now()))
 while len(block_data_dummy[block_data_dummy.block == max_block]["directions"][0]) > 0 and max_block < 64:
     # This loop will follow any path until it no longer finds any possible directions. When this happens, 
     # the first condition will no longer be valid, as the length of the possible directions will be 0.
@@ -51,18 +53,24 @@ while len(block_data_dummy[block_data_dummy.block == max_block]["directions"][0]
         block_data_dummy = reset[0]
         cube_dummy = reset[1]
         max_block = reset[2]
+        lowest_fork = reset[3]
         if max_block < deepest_penetration:
             deepest_penetration = max_block
-            print("Resetting to fork. Lowest fork "+str(reset[3])+". Deepest penetration "+str(deepest_penetration))
-        #if max_block == deepest_penetration:
-         #   print("Deepest penetration reached, building back up.")
-          #  highest_penetration = deepest_penetration
-        #if reset[3] == highest_penetration:
-         #   highest_penetration += 1
-          #  print("Went up a level. Highest penetration "+str(highest_penetration))
+            print(datetime.now())
+            print("Resetting to fork. Lowest fork "+str(lowest_fork)+". Deepest penetration "+str(deepest_penetration))
+        if max_block == lowest_fork:
+            print(datetime.now())
+            print("Deepest penetration reached, building back up.")
+            highest_penetration = deepest_penetration
+        if lowest_fork == highest_penetration:
+            highest_penetration += 1
+            print(datetime.now())
+            print("Went up a level. Highest penetration "+str(highest_penetration))
     elif max_block == 64:
+        print(datetime.now())
         print("I reached the end.")
         break
+
 
 for max_block in range(5,15):
     next_step = continue_path(cube_dummy, block_data_dummy, max_block)
