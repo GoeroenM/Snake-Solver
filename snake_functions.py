@@ -38,7 +38,7 @@ def initialize_cube(init_cube, snake, cube_size = 4):
         for block in np.unique(cube)[np.unique(cube) != 0]:
             block_number = block
             block_location = get_block_location(cube, block_number)
-            elbow = (int(snake[snake.block == max_block]['elbow']) == 1)
+            elbow = (int(snake[snake.block == block_number]['elbow']) == 1)
             if block_number < max_block:
                 direction = np.zeros((1,3))
                 direction = direction + get_direction(cube, block_number, (block_number + 1))
@@ -153,7 +153,7 @@ def get_possible_directions(cube, block, elbow):
         possible_directions = possible_directions + get_last_direction(cube)
     return(possible_directions)
 
-def continue_path(cube, block_data):
+def continue_path(cube, block_data, snake):
     block_data_dummy = copy.deepcopy(block_data)
     cube_dummy = copy.deepcopy(cube)
     block = get_max_block(cube_dummy)
