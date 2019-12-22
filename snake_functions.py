@@ -163,7 +163,7 @@ def get_possible_directions(cube, block, elbow):
 
 # Continue down a given path in the cube, based on the existing positions/directions
 # and the definition in snake.
-def continue_path(cube, block_data, snake):
+def continue_path(cube, snake, block_data):
     block_data_dummy = copy.deepcopy(block_data)
     cube_dummy = copy.deepcopy(cube)
     block = get_max_block(cube_dummy)
