@@ -1,32 +1,15 @@
 import numpy as np
 import pandas as pd
 import os
-import sys
 import copy
-import multiprocessing
+from multiprocessing.pool import Pool
+from functools import partial
 from datetime import datetime
 import snake_functions as sf
 
 # Change path to script location
 # os.chdir(os.path.realpath(sys.argv[0])) # This used to work but not anymore
 os.chdir("C:\\Users\\goero\\OneDrive\\Documenten\\Snake-Solver\\")
-
-# Load definition of snake
-snake = pd.read_csv("define_snake.txt", sep = "\t", header = 0)
-# n_cores = multiprocessing.cpu_count() - 1
-n_cores = 2
-
-# Load the cube initialization data and initialize cube + data
-# Read in the cube initialisation
-init_cube = pd.read_csv("initiate_cube_reverse.txt", sep = "\t", header = 0)
-# Reform the location part to transform it from a string [x y z] to an array
-# that is usable in the code
-init_cube['location'] = init_cube.location.str[1:6].replace(' ', '')
-init_cube['location'] = init_cube.location.apply(lambda x: np.array(list(map(int, x.split(' ')))))
-
-init_cube = sf.initialize_cube(init_cube, snake)
-block_data = init_cube[0]
-cube = init_cube[1]
 
 # Function that splits a fork and returns the block data up until, and including
 # the fork, but only one of the fork paths.
@@ -46,7 +29,7 @@ def split_fork(block_data, fork, path):
 # Function that creates a queu of objects to run parallel process on.
 # Create the queue starting with the lowest fork and then moving upwards until
 # we've reached the number of CPU cores.
-def create_queue(cube, block_data, n_cores):
+def create_queue(cube, block_data, n_cores, snake):
     queue = []
     queue.append(block_data)
     # Create subset that contains all lowest non-forked rows
@@ -56,14 +39,19 @@ def create_queue(cube, block_data, n_cores):
         for subq in sub_queue:
             # cube_dummy = sf.update_cube_from_data(cube, subq)[1]
             subq = sf.get_number_of_directions(subq)
-            lowest_fork = int(min(subq[subq['len'] > 1].block))
+            # If all directions have length 1, the lowest fork is going to 
+            # be the max block
+            if max(subq['len']) == 1:
+                lowest_fork = int(max(subq['block']))
+            else:
+                lowest_fork = int(min(subq[subq['len'] > 1].block))
             fork_size = subq[subq.block == lowest_fork].len[0]
             subq = subq.drop(['len'], axis = 1)
             for s in range(fork_size):
                 block_data_queue = split_fork(subq, lowest_fork, s)
                 cube_dummy = copy.deepcopy(cube)
                 cube_dummy = sf.update_cube_from_data(cube_dummy, block_data_queue)
-                block_data_queue = sf.continue_path(cube_dummy, block_data_queue)[0]
+                block_data_queue = sf.continue_path(cube_dummy, snake, block_data_queue)[0]
                 queue.append(block_data_queue)
     
     # In many cases, this loop will create more than the required number of elements,
@@ -73,7 +61,7 @@ def create_queue(cube, block_data, n_cores):
     
     return(queue)
 
-def solve_cube(cube, block_data):
+def solve_cube(cube, block_data, snake):
     block_data_dummy = copy.deepcopy(block_data)
     cube_dummy = copy.deepcopy(cube)
     max_block = sf.get_max_block(cube_dummy)
@@ -86,7 +74,7 @@ def solve_cube(cube, block_data):
         # When this happens, the first condition will no longer be valid, as the length of the possible directions 
         # will be 0 and we need to reset the path.
         while len(block_data_dummy[block_data_dummy.block == max_block]["directions"][0]) > 0 and max_block < 64:
-            next_step = sf.continue_path(cube_dummy, block_data_dummy, snake)
+            next_step = sf.continue_path(cube = cube_dummy, block_data = block_data_dummy, snake = snake)
             block_data_dummy = next_step[0]
             cube_dummy = next_step[1]
             max_block = next_step[2]
@@ -138,3 +126,27 @@ def solve_cube(cube, block_data):
                 print(datetime.now())
                 print("Went up a level. Highest penetration "+str(highest_penetration))
 
+def main():
+    # Load definition of snake
+    snake = pd.read_csv("define_snake.txt", sep = "\t", header = 0)
+    
+    # Pick however many cores you want to use. Either based on your PC or an absolute number of your choosing.
+    # n_cores = multiprocessing.cpu_count() - 1
+    n_cores = 2
+    
+    # Load the cube initialization data and initialize cube + data
+    # Read in the cube initialisation
+    init_cube = pd.read_csv("initiate_cube_reverse.txt", sep = "\t", header = 0)
+    # Reform the location part to transform it from a string [x y z] to an array
+    # that is usable in the code
+    init_cube['location'] = init_cube.location.str[1:6].replace(' ', '')
+    init_cube['location'] = init_cube.location.apply(lambda x: np.array(list(map(int, x.split(' ')))))
+    
+    init_cube = sf.initialize_cube(init_cube, snake)
+    block_data = init_cube[0]
+    cube = init_cube[1]
+    queue = create_queue(cube, block_data, n_cores, snake)
+    solve_q = partial(solve_cube, cube, snake)
+    with Pool(2) as p:
+        p.map(solve_q, queue)
+        
