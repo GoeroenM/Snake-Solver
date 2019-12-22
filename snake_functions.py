@@ -214,14 +214,15 @@ def reset_path(cube, block_data):
     max_block = get_max_block(cube)
     return(block_data, cube, max_block)
 
-# Get the lengths of each di
+# Get the lengths of each direction. This is used to determine fork locations etc.
 def get_number_of_directions(block_data):
     block_data['len'] = int()
     for i in range(0,len(block_data)):
         block_data.iat[i, 4] = len(block_data[block_data.block == i + 1]["directions"][0])
     return(block_data)
         
-
+# In the case where a direction gives only dead ends, the reset path function wouldn't work, 
+# so we need to return to the latest fork we tried and retry from there.
 def reset_to_latest_fork(cube, block_data):
     max_block = get_max_block(cube)
     block_data = get_number_of_directions(block_data)
