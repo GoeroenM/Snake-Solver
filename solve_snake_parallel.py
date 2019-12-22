@@ -5,11 +5,10 @@ import copy
 from multiprocessing.pool import Pool
 from functools import partial
 from datetime import datetime
-import snake_functions as sf
-
 # Change path to script location
 # os.chdir(os.path.realpath(sys.argv[0])) # This used to work but not anymore
 os.chdir("C:\\Users\\goero\\OneDrive\\Documenten\\Snake-Solver\\")
+import snake_functions as sf
 
 # Function that splits a fork and returns the block data up until, and including
 # the fork, but only one of the fork paths.
@@ -149,4 +148,6 @@ def main():
     solve_q = partial(solve_cube, cube, snake)
     with Pool(2) as p:
         p.map(solve_q, queue)
+        p.close()
+        p.join()
         
