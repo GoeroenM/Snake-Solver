@@ -39,7 +39,7 @@ def main():
         # When this happens, the first condition will no longer be valid, as the length of the possible directions 
         # will be 0 and we need to reset the path.
         while len(block_data_dummy[block_data_dummy.block == max_block]["directions"][0]) > 0 and max_block < 64:
-            next_step = sf.continue_path(cube_dummy, block_data_dummy, snake)
+            next_step = sf.continue_path(cube = cube_dummy, block_data = block_data_dummy, snake = snake)
             block_data_dummy = next_step[0]
             cube_dummy = next_step[1]
             max_block = next_step[2]
