@@ -4,17 +4,9 @@ import os
 import copy
 import multiprocessing
 
-# Change path to script location
-# os.chdir(os.path.realpath(sys.argv[0])) # This used to work but not anymore
-os.chdir("C:\\Users\\goero\\OneDrive\\Documenten\\Snake-Solver\\")
-
-# Load definition of snake
-snake = pd.read_csv("define_snake.txt", sep = "\t", header = 0)
-n_cores = multiprocessing.cpu_count()
-
 # Initialize cube based on input data.
-# Input format needs to the following/
-# 2 columns named 'block' and 'location' where location is an array with the
+# Input needs to be in the following format:
+# 2 columns named 'block' and 'location' where location is an np array with the
 # location in x, y, z coordinates.
 def initialize_cube(init_cube, snake, cube_size = 4):
     cube = np.zeros((cube_size, cube_size, cube_size))
@@ -53,6 +45,7 @@ def initialize_cube(init_cube, snake, cube_size = 4):
     
     return(block_data, cube)
 
+# Functions that updates a cube in case the block_data is more complete
 def update_cube_from_data(cube, block_data, verbose = False):
     max_block_cube = get_max_block(cube)
     max_block_data = int(max(block_data.block))
@@ -71,7 +64,9 @@ def update_cube_from_data(cube, block_data, verbose = False):
             cube_dummy = add_block(cube, b + 1, direction)
         return(cube_dummy)
 
-# Some practical functions
+# Add a block to the cube based on block number and a direction.
+# Checks if the block can be placed inside the cube, if not, it gives a
+# ValueError
 def add_block(cube, block, direction):
     from_location = get_block_location(cube, (block - 1))
     new_position = np.array(from_location) + np.array(direction)
@@ -85,26 +80,33 @@ def add_block(cube, block, direction):
         cube[int(new_position[0])][int(new_position[1])][int(new_position[2])] = block
     return(cube)
 
+# Get the number of a block in a certain position
 def get_block_number(cube, position):
     position = np.array(position)
     return cube[position[0]][position[1]][position[2]]
 
+# Get the max block number of a given cube
 def get_max_block(cube):
     return(int(max(np.unique(cube))))
 
+# Get the location of a block by its number
 def get_block_location(cube, block_number):
     return(np.array(np.where(cube == block_number)).flatten())
 
+# Remove a block from the cube
 def remove_block(cube, block):
     location = get_block_location(cube, block)
     cube[location[0]][location[1]][location[2]] = 0
     return(cube)
 
+# Get the direction between two blocks. Can be any blocks, but it's really
+# only useful for consecutive blocks
 def get_direction(cube, block1, block2):
     location1 = get_block_location(cube, block1)
     location2 = get_block_location(cube, block2)
     return(location2 - location1)
 
+# Get the drection between the final two blocks
 def get_last_direction(cube):
     max_ = get_max_block(cube)
     second = max_ - 1
@@ -112,6 +114,12 @@ def get_last_direction(cube):
     second_location = get_block_location(cube, second)
     return(max_location - second_location)
 
+# Get all possible directions one can take from a certain block.
+# If it's an elbow, the direction of the next block needs to be perpendicular
+# on the last one.
+# If the resulting direction would result in a block being outside of the cube
+# or the position in that direction is already taken by another block, the
+# function will not return those values.
 def get_possible_directions(cube, block, elbow):
     location = get_block_location(cube, block)
     last_direction = get_direction(cube, (block - 1), block)
@@ -146,13 +154,15 @@ def get_possible_directions(cube, block, elbow):
         possible_directions = possible_directions[keep_idx]    
                 
     else:
-        #The reason I predefine possible directions here and sum rather than
+        #The reason I predefine possible directions here as zeros and sum rather than
         #just taking get_last_direction is to ensure that in both the if and
         #the else, possible_directions is returned in the same format.
         possible_directions = np.zeros((1,3))
         possible_directions = possible_directions + get_last_direction(cube)
     return(possible_directions)
 
+# Continue down a given path in the cube, based on the existing positions/directions
+# and the definition in snake.
 def continue_path(cube, block_data, snake):
     block_data_dummy = copy.deepcopy(block_data)
     cube_dummy = copy.deepcopy(cube)
@@ -169,10 +179,9 @@ def continue_path(cube, block_data, snake):
                                                          "directions":[next_directions]}))
         max_block = get_max_block(cube_dummy)
     except ValueError:
-        # A ValueError is only going to happen when you're trying to continue
-        # on from one elbow to the next. So in this case, we'll have to go back
-        # to the last elbow instead of just remove the last block and try a new
-        # direction.
+        # A ValueError is only going to happen when you're trying to place a non-elbow block or
+        # a block after a non-elbow block. In this case, we'll have to go back to the last elbow 
+        # instead of just remove the last block and try a new direction.
         last_elbow = int(max(block_data_dummy[block_data_dummy.elbow]["block"]))
         for b in range(last_elbow, block):
             cube_dummy = remove_block(cube_dummy, (b + 1))
@@ -195,7 +204,7 @@ def reset_path(cube, block_data):
     cube = remove_block(cube, max_block)
     old_data = block_data[block_data.block == (max_block - 1)]
     # Take all the same data, but remove the last taken direction from the
-    # previous block
+    # previous block, which is always going to be the first direction in 'directions'
     replacement_data = pd.DataFrame({'block':old_data.block,
                                          'elbow':old_data.elbow,
                                          'location':old_data.location,
@@ -205,7 +214,8 @@ def reset_path(cube, block_data):
     max_block = get_max_block(cube)
     return(block_data, cube, max_block)
 
-def get_lengths(block_data):
+# Get the lengths of each di
+def get_number_of_directions(block_data):
     block_data['len'] = int()
     for i in range(0,len(block_data)):
         block_data.iat[i, 4] = len(block_data[block_data.block == i + 1]["directions"][0])
@@ -214,7 +224,7 @@ def get_lengths(block_data):
 
 def reset_to_latest_fork(cube, block_data):
     max_block = get_max_block(cube)
-    block_data = get_lengths(block_data)
+    block_data = get_number_of_directions(block_data)
     latest_fork = int(max(block_data[block_data['len'] > 1].block))
     lowest_fork = int(min(block_data[block_data['len'] > 1].block))
     block_data = block_data.drop(['len'], axis = 1)
@@ -238,7 +248,7 @@ def reset_to_latest_fork(cube, block_data):
 # a queue on any number of cores. This function couldn't handle anything higher
 # than the sum of permutations above the second level.
 # def create_queue(cube, block_data, n_cores):
-#     block_data = sf.get_lengths(block_data)
+#     block_data = sf.get_number_of_directions(block_data)
 #     lowest_fork = int(min(block_data[block_data['len'] > 1].block))
 #     fork_size = block_data[block_data.block == lowest_fork].len[0]
 #     block_data = block_data.drop(['len'], axis = 1)
@@ -252,7 +262,7 @@ def reset_to_latest_fork(cube, block_data):
 #     queue = []
 #     for q in range(len(sub_queue)):
 #         sub_queue[q] = sf.continue_path(cube, sub_queue[q])[0]
-#         sub_queue[q] = sf.get_lengths(sub_queue[q])
+#         sub_queue[q] = sf.get_number_of_directions(sub_queue[q])
 #         max_block = int(max(sub_queue[q].block[0]))        
 #         new_direction = sub_queue[q][sub_queue[q].block == max_block - 1].directions[0][0]
 #         cube_dummy = copy.deepcopy(cube)
