@@ -47,10 +47,11 @@ def main():
         # Before resetting the path, check if the cube is not finished or a complete dead end.
         block_data_dummy = sf.get_lengths(block_data_dummy)
         if max(block_data_dummy.len) == 1 and max_block < 64:
-            print("Couldn't find a solution, your starting positions must have been wrong.")
-            return(block_data_dummy, cube_dummy)
             stop_time = datetime.now()
-            break
+            print("Couldn't find a solution, your starting positions must have been wrong.")
+            print("Time elapsed: "+str(stop_time - start_time))
+            return(block_data_dummy, cube_dummy)
+            # break
         elif max_block == 64:
             stop_time = datetime.now()
             print(stop_time)
