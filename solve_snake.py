@@ -35,18 +35,20 @@ def main():
     print('Starting at '+str(datetime.now()))
     start_time = datetime.now()
     while len(block_data_dummy[block_data_dummy.block == max_block]["directions"][0]) > 0 and max_block < 64:
-        # This loop will follow any path until it no longer finds any possible directions. When this happens, 
-        # the first condition will no longer be valid, as the length of the possible directions will be 0.
+        # This loop will follow any path by always taking the first path until it no longer finds any possible directions.
+        # When this happens, the first condition will no longer be valid, as the length of the possible directions 
+        # will be 0 and we need to reset the path.
         while len(block_data_dummy[block_data_dummy.block == max_block]["directions"][0]) > 0 and max_block < 64:
             next_step = sf.continue_path(cube_dummy, block_data_dummy, snake)
             block_data_dummy = next_step[0]
             cube_dummy = next_step[1]
             max_block = next_step[2]
         
+        # Before resetting the path, check if the cube is not finished or a complete dead end.
         block_data_dummy = sf.get_lengths(block_data_dummy)
         if max(block_data_dummy.len) == 1 and max_block < 64:
             print("Couldn't find a solution, your starting positions must have been wrong.")
-            # return(block_data_dummy)
+            return(block_data_dummy, cube_dummy)
             stop_time = datetime.now()
             break
         elif max_block == 64:
@@ -57,7 +59,8 @@ def main():
             # Now clean up the cube data
             block_data = block_data_dummy[['block', 'location', 'elbow']]
             cube = cube_dummy
-            break
+            return(block_data, cube)
+            # break
         else:
             block_data_dummy = block_data_dummy.drop(['len'], axis = 1)
         # When the inner loop fails, we need to reset the path we took and remove the last direction we took
@@ -66,7 +69,7 @@ def main():
         block_data_dummy = reset[0]
         cube_dummy = reset[1]
         max_block = reset[2]
-        # When a the last direction is removed, the length of the possible directions will again be 0.
+        # When the last direction is removed, the length of the possible directions will again be 0.
         # In this case, we want to reset to the last fork that existed, which is the last block where
         # more than one direction existed.
         if len(block_data_dummy[block_data_dummy.block == max_block]["directions"][0]) == 0 and max_block < 64:
