@@ -10,7 +10,7 @@ The code will then place the next block based on the first possible direction fr
 
 This keeps going until the cube is solved.
 
-Note: since the time required to solve the cube increases exponentially for each extra block you need to place, you'll need to know the starting positions of at least ~10 blocks, or the code will take a ridiculous amount of time to run. At 11 blocks, it took me
+Note: since the time required to solve the cube increases exponentially for each extra block you need to place, you'll need to know the starting positions of at least ~10 blocks, or the code will take a ridiculous amount of time to run. At 11 blocks, it took my laptop around 8 hours and 30 minutes.
 
 define_snake.txt and define_snake_reverse.txt contain the definitions of the 'snake': each block and whether or not it is an elbow.
 
