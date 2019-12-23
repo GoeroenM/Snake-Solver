@@ -165,9 +165,16 @@ def continue_path(cube, snake, block_data):
     block_data_dummy = copy.deepcopy(block_data)
     cube_dummy = copy.deepcopy(cube)
     block = get_max_block(cube_dummy)
-    direction_dummy = np.array(block_data_dummy[block_data_dummy.block == block]["directions"][0][0], dtype = "int64")
+    # The reason I define directiondummy here as an int of zeros and add it with the actual direction
+    # is because if I keep the old line:
+    # direction_dummy = np.array(block_data_dummy[block_data_dummy.block == block]["directions"][0][0], dtype = 'int64')
+    # and run the solve_cube in a loop/queue I get a ValueError. 
+    # If I remove the dtype = 'int64' part, I don't get the ValueError, but I get another error
+    # further down the line due to direction not being integer. So, this little workaround fixes those issues.
+    direction_dummy = np.zeros((1,3))
+    direction_dummy = direction_dummy + np.array(block_data_dummy[block_data_dummy.block == block]["directions"][0][0])
     try:
-        cube_dummy = add_block(cube_dummy, block + 1, direction_dummy)
+        cube_dummy = add_block(cube_dummy, block + 1, direction_dummy[0])
         location_dummy = get_block_location(cube_dummy, block + 1)
         elbow = (int(snake[snake.block == (block + 1)]['elbow']) == 1)
         next_directions = get_possible_directions(cube_dummy, int(block + 1), elbow)
