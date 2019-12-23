@@ -3,18 +3,17 @@ import pandas as pd
 import os
 import copy
 from datetime import datetime
-import snake_functions as sf
-
 # Change path to script location
 # os.chdir(os.path.realpath(sys.argv[0])) # This used to work but not anymore
 os.chdir("C:\\Users\\goero\\OneDrive\\Documenten\\Snake-Solver\\")
+import snake_functions as sf
 
 def main():
     # Load definition of snake
-    snake = pd.read_csv("define_snake_reverse.txt", sep = "\t", header = 0)
+    snake = pd.read_csv("define_snake.txt", sep = "\t", header = 0)
     
     # Read in the cube initialisation
-    init_cube = pd.read_csv("initiate_cube_reverse.txt", sep = "\t", header = 0)
+    init_cube = pd.read_csv("initiate_cube.txt", sep = "\t", header = 0)
     # Reform the location part to transform it from a string [x y z] to an array
     # that is usable in the code
     init_cube['location'] = init_cube.location.str[1:6].replace(' ', '')
@@ -50,8 +49,8 @@ def main():
             stop_time = datetime.now()
             print("Couldn't find a solution, your starting positions must have been wrong.")
             print("Time elapsed: "+str(stop_time - start_time))
-            return(block_data_dummy, cube_dummy)
-            # break
+            # return(block_data_dummy, cube_dummy)
+            break
         elif max_block == 64:
             stop_time = datetime.now()
             print(stop_time)
@@ -60,8 +59,8 @@ def main():
             # Now clean up the cube data
             block_data = block_data_dummy[['block', 'location', 'elbow']]
             cube = cube_dummy
-            return(block_data, cube)
-            # break
+            # return(block_data, cube)
+            break
         else:
             block_data_dummy = block_data_dummy.drop(['len'], axis = 1)
         # When the inner loop fails, we need to reset the path we took and remove the last direction we took
