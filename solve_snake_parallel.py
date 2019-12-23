@@ -2,7 +2,8 @@ import numpy as np
 import pandas as pd
 import os
 import copy
-from multiprocessing.pool import Pool
+# from multiprocessing.pool import Pool
+import multiprocessing as mp
 from functools import partial
 from datetime import datetime
 # Change path to script location
@@ -60,7 +61,7 @@ def create_queue(cube, block_data, n_cores, snake):
     
     return(queue)
 
-def solve_cube(cube, block_data, snake):
+def solve_cube(cube, snake, block_data):
     block_data_dummy = copy.deepcopy(block_data)
     cube_dummy = copy.deepcopy(cube)
     max_block = sf.get_max_block(cube_dummy)
@@ -73,7 +74,7 @@ def solve_cube(cube, block_data, snake):
         # When this happens, the first condition will no longer be valid, as the length of the possible directions 
         # will be 0 and we need to reset the path.
         while len(block_data_dummy[block_data_dummy.block == max_block]["directions"][0]) > 0 and max_block < 64:
-            next_step = sf.continue_path(cube = cube_dummy, block_data = block_data_dummy, snake = snake)
+            next_step = sf.continue_path(cube_dummy, snake, block_data_dummy)
             block_data_dummy = next_step[0]
             cube_dummy = next_step[1]
             max_block = next_step[2]
@@ -127,7 +128,7 @@ def solve_cube(cube, block_data, snake):
 
 def main():
     # Load definition of snake
-    snake = pd.read_csv("define_snake.txt", sep = "\t", header = 0)
+    snake = pd.read_csv("define_snake_reverse.txt", sep = "\t", header = 0)
     
     # Pick however many cores you want to use. Either based on your PC or an absolute number of your choosing.
     # n_cores = multiprocessing.cpu_count() - 1
@@ -145,9 +146,16 @@ def main():
     block_data = init_cube[0]
     cube = init_cube[1]
     queue = create_queue(cube, block_data, n_cores, snake)
-    solve_q = partial(solve_cube, cube, snake)
+    queue_class = mp.Queue()
+    for q in queue:
+        queue_class.put(q)
+    
+    for q in queue:
+        cube_dummy = sf.update_cube_from_data(cube, q)
+        test = solve_cube(cube_dummy, snake, q)
+        print(test[0])
     with Pool(2) as p:
-        p.map(solve_q, queue)
-        p.close()
-        p.join()
+        results = [p.apply_async(solve_cube, args = (cube, snake, x)) for x in queue]
+        output = [r.get() for r in results]
+        print(output)
         
