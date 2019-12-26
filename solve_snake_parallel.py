@@ -29,7 +29,8 @@ def split_fork(block_data, fork, path):
 # Function that creates a queu of objects to run parallel process on.
 # Create the queue starting with the lowest fork and then moving upwards until
 # we've reached the number of CPU cores.
-def create_queue(cube, block_data, n_cores, snake):
+def create_queue(block_data, n_cores, snake):
+    cube = sf.create_cube_from_block_data(block_data)
     queue = []
     queue.append(block_data)
     # Create subset that contains all lowest non-forked rows
@@ -61,7 +62,7 @@ def create_queue(cube, block_data, n_cores, snake):
     
     return(queue)
 
-def solve_cube(cube, snake, block_data):
+def solve_cube(snake, block_data):
     block_data_dummy = copy.deepcopy(block_data)
     cube_dummy = copy.deepcopy(cube)
     max_block = sf.get_max_block(cube_dummy)
@@ -74,18 +75,18 @@ def solve_cube(cube, snake, block_data):
         # When this happens, the first condition will no longer be valid, as the length of the possible directions 
         # will be 0 and we need to reset the path.
         while len(block_data_dummy[block_data_dummy.block == max_block]["directions"][0]) > 0 and max_block < 64:
-            next_step = sf.continue_path(cube_dummy, snake, block_data_dummy)
+            next_step = sf.continue_path(block_data = block_data_dummy, snake = snake)
             block_data_dummy = next_step[0]
-            cube_dummy = next_step[1]
-            max_block = next_step[2]
+            max_block = next_step[1]
         
         # Before resetting the path, check if the cube is not finished or a complete dead end.
         block_data_dummy = sf.get_number_of_directions(block_data_dummy)
         if max(block_data_dummy.len) == 1 and max_block < 64:
-            print("Couldn't find a solution, your starting positions must have been wrong.")
-            return(block_data_dummy, cube_dummy)
             stop_time = datetime.now()
-            # break
+            print("Couldn't find a solution, your starting positions must have been wrong.")
+            print("Time elapsed: "+str(stop_time - start_time))
+            # return(block_data_dummy, cube_dummy)
+            break
         elif max_block == 64:
             stop_time = datetime.now()
             print(stop_time)
@@ -93,26 +94,25 @@ def solve_cube(cube, snake, block_data):
             print("Time elapsed: "+str(stop_time - start_time))
             # Now clean up the cube data
             block_data = block_data_dummy[['block', 'location', 'elbow']]
-            cube = cube_dummy
-            return(block_data, cube)
-            # break
+            cube = sf.create_cube_from_block_data(block_data)
+            # return(block_data, cube)
+            break
         else:
             block_data_dummy = block_data_dummy.drop(['len'], axis = 1)
         # When the inner loop fails, we need to reset the path we took and remove the last direction we took
         # on that path.
-        reset = sf.reset_path(cube_dummy, block_data_dummy)
+        reset = sf.reset_path(block_data_dummy)
         block_data_dummy = reset[0]
-        cube_dummy = reset[1]
-        max_block = reset[2]
+        max_block = reset[1]
+        
         # When the last direction is removed, the length of the possible directions will again be 0.
         # In this case, we want to reset to the last fork that existed, which is the last block where
         # more than one direction existed.
         if len(block_data_dummy[block_data_dummy.block == max_block]["directions"][0]) == 0 and max_block < 64:
-            reset = sf.reset_to_latest_fork(cube_dummy, block_data_dummy)
+            reset = sf.reset_to_latest_fork(block_data_dummy)
             block_data_dummy = reset[0]
-            cube_dummy = reset[1]
-            max_block = reset[2]
-            lowest_fork = reset[3]
+            max_block = reset[1]
+            lowest_fork = reset[2]
             if max_block < deepest_penetration:
                 deepest_penetration = max_block
                 print(datetime.now())
@@ -147,15 +147,30 @@ def main():
     cube = init_cube[1]
     queue = create_queue(cube, block_data, n_cores, snake)
     queue_class = mp.Queue()
+    solve_q = partial(solve_cube, snake)
     for q in queue:
         queue_class.put(q)
+        
+    processes = [mp.Process(target = solve_cube, args = (cube, snake, queue_class)) for x in range(n_cores)]
     
-    for q in queue:
-        cube_dummy = sf.update_cube_from_data(cube, q)
-        test = solve_cube(cube_dummy, snake, q)
-        print(test[0])
-    with Pool(2) as p:
-        results = [p.apply_async(solve_cube, args = (cube, snake, x)) for x in queue]
-        output = [r.get() for r in results]
-        print(output)
+    for p in processes:
+        p.start()
+        
+    for p in processes:
+        p.join()
+    
+    result = [queue_class.get() for p in processes]
+    
+    pool = mp.Pool(n_cores)
+    results = pool.apply_async(solve_cube, cube, snake, queue)
+    results.close()
+    results.join()
+#    for q in queue:
+#        cube_dummy = sf.update_cube_from_data(cube, q)
+#        test = solve_cube(cube_dummy, snake, q)
+#        print(test[0])
+#    with Pool(2) as p:
+#        results = [p.apply_async(solve_cube, args = (cube, snake, x)) for x in queue_class]
+#        output = [r.get() for r in results]
+#        print(output)
         
