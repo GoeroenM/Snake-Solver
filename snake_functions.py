@@ -18,7 +18,7 @@ def initialize_cube(init_cube, snake, cube_size = 4):
 #        else:
 #            cube[location[0]][location[1]][location[2]] = int(i)
     
-    cube = create_cube_from_block_data(init_cube[['block', 'location']])
+    cube = create_cube_from_block_data(init_cube[['block', 'location']], cube_size)
     
     # Now initialize the block data
     max_block = get_max_block(cube)
@@ -51,7 +51,8 @@ def initialize_cube(init_cube, snake, cube_size = 4):
 def create_cube_from_block_data(block_data, cube_size = 4):
     cube = np.zeros((cube_size, cube_size, cube_size))
     for i in block_data.block:
-        location = block_data[block_data.block == i].location[0]
+        idx = block_data[block_data.block == i].index.tolist()[0]
+        location = block_data[block_data.block == i].location[idx]
         if cube[location[0]][location[1]][location[2]] != 0:
             print("You tried to put two blocks in the same location.\n")
             print("Aborting cube initilisation, please fill in correct locations.")
