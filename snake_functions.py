@@ -218,7 +218,7 @@ def continue_path(snake, block_data):
         block_data_dummy = block_data_dummy[0:(last_elbow - 1)]
         block_data_dummy = block_data_dummy.append(replacement_data)
         max_block = get_max_block(cube_dummy)
-    return(block_data_dummy, cube_dummy, max_block)
+    return(block_data_dummy, max_block)
 
 # This function is run when the continue_path function finds a dead end.
 # Fix the cube by removing the last block and removing the last taken path.    
@@ -236,7 +236,7 @@ def reset_path(block_data):
     block_data = block_data[0:(max_block - 2)]
     block_data = block_data.append(replacement_data)
     max_block = get_max_block(cube)
-    return(block_data, cube, max_block)
+    return(block_data, max_block)
 
 # Get the lengths of each direction. This is used to determine fork locations etc.
 def get_number_of_directions(block_data):
@@ -264,7 +264,7 @@ def reset_to_latest_fork(block_data):
     for b in range(latest_fork, max_block):
         cube = remove_block(cube, b + 1)
     max_block = get_max_block(cube)
-    return(block_data, cube, max_block, lowest_fork)
+    return(block_data, max_block, lowest_fork)
 
 # Function that creates a queu of objects to run parallel process on.
 # Create the queue starting with the lowest fork and then moving upwards until
