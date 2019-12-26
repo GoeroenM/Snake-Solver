@@ -27,7 +27,7 @@ def main():
     cube = init_cube[1]
     
     block_data_dummy = copy.deepcopy(block_data)
-    cube_dummy = copy.deepcopy(cube)
+    # cube_dummy = copy.deepcopy(cube)
     max_block = sf.get_max_block(cube_dummy)
     deepest_penetration = int(64)
     highest_penetration = int(0)
@@ -38,10 +38,9 @@ def main():
         # When this happens, the first condition will no longer be valid, as the length of the possible directions 
         # will be 0 and we need to reset the path.
         while len(block_data_dummy[block_data_dummy.block == max_block]["directions"][0]) > 0 and max_block < 64:
-            next_step = sf.continue_path(cube = cube_dummy, block_data = block_data_dummy, snake = snake)
+            next_step = sf.continue_path(block_data = block_data_dummy, snake = snake)
             block_data_dummy = next_step[0]
-            cube_dummy = next_step[1]
-            max_block = next_step[2]
+            max_block = next_step[1]
         
         # Before resetting the path, check if the cube is not finished or a complete dead end.
         block_data_dummy = sf.get_number_of_directions(block_data_dummy)
@@ -58,26 +57,25 @@ def main():
             print("Time elapsed: "+str(stop_time - start_time))
             # Now clean up the cube data
             block_data = block_data_dummy[['block', 'location', 'elbow']]
-            cube = cube_dummy
+            cube = sf.create_cube_from_block_data(block_data)
             # return(block_data, cube)
             break
         else:
             block_data_dummy = block_data_dummy.drop(['len'], axis = 1)
         # When the inner loop fails, we need to reset the path we took and remove the last direction we took
         # on that path.
-        reset = sf.reset_path(cube_dummy, block_data_dummy)
+        reset = sf.reset_path(block_data_dummy)
         block_data_dummy = reset[0]
-        cube_dummy = reset[1]
-        max_block = reset[2]
+        max_block = reset[1]
+        
         # When the last direction is removed, the length of the possible directions will again be 0.
         # In this case, we want to reset to the last fork that existed, which is the last block where
         # more than one direction existed.
         if len(block_data_dummy[block_data_dummy.block == max_block]["directions"][0]) == 0 and max_block < 64:
-            reset = sf.reset_to_latest_fork(cube_dummy, block_data_dummy)
+            reset = sf.reset_to_latest_fork(block_data_dummy)
             block_data_dummy = reset[0]
-            cube_dummy = reset[1]
-            max_block = reset[2]
-            lowest_fork = reset[3]
+            max_block = reset[1]
+            lowest_fork = reset[2]
             if max_block < deepest_penetration:
                 deepest_penetration = max_block
                 print(datetime.now())
