@@ -60,6 +60,7 @@ def create_cube_from_block_data(block_data, cube_size = 4):
         else:
             cube[location[0]][location[1]][location[2]] = int(i)
     return(cube)
+
 # Functions that updates a cube in case the block_data is more complete
 def update_cube_from_data(cube, block_data, verbose = False):
     max_block_cube = get_max_block(cube)
@@ -178,9 +179,9 @@ def get_possible_directions(cube, block, elbow):
 
 # Continue down a given path in the cube, based on the existing positions/directions
 # and the definition in snake.
-def continue_path(cube, snake, block_data):
+def continue_path(snake, block_data):
     block_data_dummy = copy.deepcopy(block_data)
-    cube_dummy = copy.deepcopy(cube)
+    cube_dummy = create_cube_from_block_data(block_data)
     block = get_max_block(cube_dummy)
     # The reason I define directiondummy here as an int of zeros and add it with the actual direction
     # is because if I keep the old line:
@@ -221,7 +222,8 @@ def continue_path(cube, snake, block_data):
 
 # This function is run when the continue_path function finds a dead end.
 # Fix the cube by removing the last block and removing the last taken path.    
-def reset_path(cube, block_data):
+def reset_path(block_data):
+    cube = create_cube_from_block_data(block_data)
     max_block = get_max_block(cube)
     cube = remove_block(cube, max_block)
     old_data = block_data[block_data.block == (max_block - 1)]
@@ -245,7 +247,8 @@ def get_number_of_directions(block_data):
         
 # In the case where a direction gives only dead ends, the reset path function wouldn't work, 
 # so we need to return to the latest fork we tried and retry from there.
-def reset_to_latest_fork(cube, block_data):
+def reset_to_latest_fork(block_data):
+    cube = create_cube_from_block_data(block_data)
     max_block = get_max_block(cube)
     block_data = get_number_of_directions(block_data)
     latest_fork = int(max(block_data[block_data['len'] > 1].block))
