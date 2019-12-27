@@ -6,8 +6,9 @@ import copy
 import multiprocessing as mp
 from functools import partial
 from datetime import datetime
+import sys
 # Change path to script location
-# os.chdir(os.path.realpath(sys.argv[0])) # This used to work but not anymore
+#os.chdir(os.path.realpath(sys.argv[0])) # This used to work but not anymore
 os.chdir("C:\\Users\\goero\\OneDrive\\Documenten\\Snake-Solver\\")
 import snake_functions as sf
 
@@ -146,23 +147,42 @@ def main():
     
     init_cube = sf.initialize_cube(init_cube, snake)
     block_data = init_cube[0]
-    print("Finished initializing.")
     queue = create_queue(block_data, n_cores, snake)
-    print("Made queue.")
     solve_q = partial(solve_cube, snake)
-    print("Made partial.")
-    print("Trying to run pooled processes.")
+    
+    ###########################################################################
+    # This piece of code works and will run parallel processes until the cube is solved.
+    # Unfortunately, this can not update as a certain path has been found a dead end, 
+    # or all but one path being dead ends so all you can do is reduce computing time linearly.
     with mp.Pool(n_cores) as p:
         results = [p.apply_async(solve_q, args = (q,)) for q in queue]
+        output = [r.get() for r in results]
     
-    print("Trying to get output.")
-    output = [r.get() for r in results]
-    print(output)
-#    for out in output:
-#        if len(out.block) < 64:
-#            output.remove(out)
+    for out in output:
+        if len(out.block) == 64:
+            final_block_data = out
+    ###########################################################################
     
-#    print(output)
+#    queue_class = mp.Queue()
+#    for q in queue:
+#        queue_class.put(q)
+#    
+##    processes = [mp.Process(target = solve_q, args = (queue_class, )) for ]
+#    processes = []
+#    for c in range(n_cores):
+#        p = mp.Process(target = solve_q, args = (queue_class,))
+#        processes.append(p)
+#        p.start()
+#    
+#    for p in processes:
+#        p.join()
+#    
+#    output = [queue_class.get() for p in processes]
+    
+    
+    
+    # Save the final data
+#    final_block_data.to_csv("cube_solved_reverse.txt", sep = "\t", index = False)
 
 if __name__ == "__main__":
     main()
