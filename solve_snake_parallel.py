@@ -52,7 +52,7 @@ def create_queue(block_data, n_cores, snake):
                 block_data_queue = split_fork(subq, lowest_fork, s)
                 cube_dummy = copy.deepcopy(cube)
                 cube_dummy = sf.update_cube_from_data(cube_dummy, block_data_queue)
-                block_data_queue = sf.continue_path(cube_dummy, snake, block_data_queue)[0]
+                block_data_queue = sf.continue_path(snake, block_data_queue)[0]
                 queue.append(block_data_queue)
     
     # In many cases, this loop will create more than the required number of elements,
@@ -64,8 +64,9 @@ def create_queue(block_data, n_cores, snake):
 
 def solve_cube(snake, block_data):
     block_data_dummy = copy.deepcopy(block_data)
-    cube_dummy = copy.deepcopy(cube)
-    max_block = sf.get_max_block(cube_dummy)
+    # cube_dummy = copy.deepcopy(cube)
+    # max_block = sf.get_max_block(cube_dummy)
+    max_block = int(max(block_data_dummy.block))
     deepest_penetration = int(64)
     highest_penetration = int(0)
     print('Starting at '+str(datetime.now()))
@@ -85,8 +86,8 @@ def solve_cube(snake, block_data):
             stop_time = datetime.now()
             print("Couldn't find a solution, your starting positions must have been wrong.")
             print("Time elapsed: "+str(stop_time - start_time))
-            # return(block_data_dummy, cube_dummy)
-            break
+            return(block_data_dummy)
+            # break
         elif max_block == 64:
             stop_time = datetime.now()
             print(stop_time)
@@ -94,9 +95,9 @@ def solve_cube(snake, block_data):
             print("Time elapsed: "+str(stop_time - start_time))
             # Now clean up the cube data
             block_data = block_data_dummy[['block', 'location', 'elbow']]
-            cube = sf.create_cube_from_block_data(block_data)
-            # return(block_data, cube)
-            break
+            # cube = sf.create_cube_from_block_data(block_data)
+            return(block_data)
+            # break
         else:
             block_data_dummy = block_data_dummy.drop(['len'], axis = 1)
         # When the inner loop fails, we need to reset the path we took and remove the last direction we took
@@ -127,6 +128,7 @@ def solve_cube(snake, block_data):
                 print("Went up a level. Highest penetration "+str(highest_penetration))
 
 def main():
+    print("Running main.")
     # Load definition of snake
     snake = pd.read_csv("define_snake_reverse.txt", sep = "\t", header = 0)
     
@@ -144,33 +146,23 @@ def main():
     
     init_cube = sf.initialize_cube(init_cube, snake)
     block_data = init_cube[0]
-    cube = init_cube[1]
-    queue = create_queue(cube, block_data, n_cores, snake)
-    queue_class = mp.Queue()
+    print("Finished initializing.")
+    queue = create_queue(block_data, n_cores, snake)
+    print("Made queue.")
     solve_q = partial(solve_cube, snake)
-    for q in queue:
-        queue_class.put(q)
-        
-    processes = [mp.Process(target = solve_cube, args = (cube, snake, queue_class)) for x in range(n_cores)]
+    print("Made partial.")
+    print("Trying to run pooled processes.")
+    with mp.Pool(n_cores) as p:
+        results = [p.apply_async(solve_q, args = (q,)) for q in queue]
     
-    for p in processes:
-        p.start()
-        
-    for p in processes:
-        p.join()
+    print("Trying to get output.")
+    output = [r.get() for r in results]
+    print(output)
+#    for out in output:
+#        if len(out.block) < 64:
+#            output.remove(out)
     
-    result = [queue_class.get() for p in processes]
-    
-    pool = mp.Pool(n_cores)
-    results = pool.apply_async(solve_cube, cube, snake, queue)
-    results.close()
-    results.join()
-#    for q in queue:
-#        cube_dummy = sf.update_cube_from_data(cube, q)
-#        test = solve_cube(cube_dummy, snake, q)
-#        print(test[0])
-#    with Pool(2) as p:
-#        results = [p.apply_async(solve_cube, args = (cube, snake, x)) for x in queue_class]
-#        output = [r.get() for r in results]
-#        print(output)
-        
+#    print(output)
+
+if __name__ == "__main__":
+    main()
