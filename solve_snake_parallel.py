@@ -63,7 +63,7 @@ def create_queue(block_data, n_cores, snake):
     
     return(queue)
 
-def solve_cube(snake, block_data):
+def solve_cube(snake, block_data):#queue):
     block_data_dummy = copy.deepcopy(block_data)
     # cube_dummy = copy.deepcopy(cube)
     # max_block = sf.get_max_block(cube_dummy)
@@ -87,7 +87,8 @@ def solve_cube(snake, block_data):
             stop_time = datetime.now()
             print("Couldn't find a solution, your starting positions must have been wrong.")
             print("Time elapsed: "+str(stop_time - start_time))
-            return(block_data_dummy)
+#            return(block_data_dummy)
+            queue.put(block_data_dummy)
             # break
         elif max_block == 64:
             stop_time = datetime.now()
@@ -97,7 +98,8 @@ def solve_cube(snake, block_data):
             # Now clean up the cube data
             block_data = block_data_dummy[['block', 'location', 'elbow']]
             # cube = sf.create_cube_from_block_data(block_data)
-            return(block_data)
+#            return(block_data)
+            queue.put(block_data)
             # break
         else:
             block_data_dummy = block_data_dummy.drop(['len'], axis = 1)
@@ -149,36 +151,39 @@ def main():
     block_data = init_cube[0]
     queue = create_queue(block_data, n_cores, snake)
     solve_q = partial(solve_cube, snake)
-    
+
     ###########################################################################
     # This piece of code works and will run parallel processes until the cube is solved.
     # Unfortunately, this can not update as a certain path has been found a dead end, 
     # or all but one path being dead ends so all you can do is reduce computing time linearly.
-    with mp.Pool(n_cores) as p:
-        results = [p.apply_async(solve_q, args = (q,)) for q in queue]
-        output = [r.get() for r in results]
-    
-    for out in output:
-        if len(out.block) == 64:
-            final_block_data = out
+#    with mp.Pool(n_cores) as p:
+#        results = [p.apply_async(solve_q, args = (q,)) for q in queue]
+#        output = [r.get() for r in results]
+#    
+#    for out in output:
+#        if len(out.block) == 64:
+#            final_block_data = out
     ###########################################################################
     
-#    queue_class = mp.Queue()
+    m = mp.Manager()
+    queue_class = mp.Queue()
 #    for q in queue:
 #        queue_class.put(q)
-#    
-##    processes = [mp.Process(target = solve_q, args = (queue_class, )) for ]
-#    processes = []
-#    for c in range(n_cores):
-#        p = mp.Process(target = solve_q, args = (queue_class,))
-#        processes.append(p)
-#        p.start()
-#    
+    
+#    processes = [mp.Process(target = solve_q, args = (queue_class, )) for ]
+    processes = []
+    for c in range(n_cores):
+        p = mp.Process(target = solve_q, args = (queue[c], queue_class))
+        processes.append(p)
+        p.start()
+        p.join()
+    
+    print("Finished processes.")
 #    for p in processes:
 #        p.join()
-#    
-#    output = [queue_class.get() for p in processes]
-    
+    print("Joined processes.")
+    output = [queue_class.get() for p in processes]
+    print(output)
     
     
     # Save the final data
